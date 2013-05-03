@@ -352,6 +352,11 @@ $(document).ready(function() {
 	
 	//Preload filter fields with query string
 	preloadFilters();
+
+	// Hide Authenfication form
+	$(".popover").hide();
+    // Display Login modal
+    $("#logGitHub").click(function(){ displayLogginModal(); }); 
 });
 
 /* Parse current URL and return anchor name */
@@ -399,4 +404,32 @@ function highlightBlock(a) {
 	
 	target.addClass("highlighted");
 	target.show();
+}
+
+function displayLogginModal(){
+	if ($('.popover').is(':hidden')) { $('.popover').show(); }
+	else { $('.popover').hide(); }	
+	updateDisplaying();
+}
+
+function updateDisplaying(){
+	$('#logginMessage').css({'display' : 'none'});
+	$("#liGitHub").attr("class", "");
+  	$("#imgGitHub").attr("src", "resources/icons/github-icon.png");
+  	$('#loginGit').val("");
+	$('#passwordGit').val("");
+	$('#nickName').text("");
+	$('.popover').css({'height' : '280px'});	
+	$('#logginMessage').css({'display' : 'none'});
+	$('#repositoryGit').val($('#repoName').attr('name'));
+  	$('#branchGit').val('wikidoc');  
+  	$('#signIn').text("Sign In");
+	$('#loginGit').show();
+  	$('#passwordGit').show();
+  	$('#lbpasswordGit').show();
+  	$('#lbloginGit').show();	
+  	$('#repositoryGit').show();
+  	$('#lbrepositoryGit').show();
+  	$('#lbbranchGit').show();  
+  	$('#branchGit').show();  
 }
