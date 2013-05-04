@@ -24,6 +24,15 @@ var currentIndex = -1;
 * Add folding and filtering facilities to class description page.
 */
 $(document).ready(function() {
+
+	// Hide edit tags
+	$('textarea').hide();
+	$('a[id=commitBtn]').hide();
+	$('a[id=cancelBtn]').hide();
+	// Hide Authenfication form
+	$(".popover").hide();    
+    // Update display
+    updateDisplaying();
 	
 	/*
 	* Highlight the spoted element
@@ -357,14 +366,11 @@ $(document).ready(function() {
 	//Preload filter fields with query string
 	preloadFilters();
 
-	// Hide Authenfication form
-	$(".popover").hide();
-    // Display Login modal
-    $("#logGitHub").click(function(){ displayLogginModal(); }); 
-    // Update display
-    updateDisplaying();
     // If cookie existing the session is opened
     if(sessionStarted != false)	{ userB64 = "Basic " + getUserPass("logginNitdoc"); }
+
+    // Display Login modal
+    $("#logGitHub").click(function(){ displayLogginModal(); }); 
 
     // Sign In an github user or Log out him
 	$("#signIn").click(function(){
