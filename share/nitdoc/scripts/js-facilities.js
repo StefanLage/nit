@@ -12,6 +12,7 @@ var shaNewCommit;
 var shaBlob;
 var shaMaster;
 var repoExist;
+var branchExist;
 
 /*
 * JQuery Case Insensitive :icontains selector
@@ -507,24 +508,55 @@ $(document).ready(function() {
 		// Check if repo exist
 		isRepoExisting();
 		if(repoExist == true){	
-			editComment -= 1;
-			commitMessage = $('#commitMessage').val();			
-			if(commitMessage == ""){ commitMessage = "New commit";}
-			if(sessionStarted == true){	
-				if ($.trim(updateComment) == ''){ this.value = (this.defaultValue ? this.defaultValue : ''); }
-		     	else{ startCommitProcess(); }
-		     }	
-		     $('#modal, #modalQuestion').fadeOut(function() {
-				$('#login').val("");
-				$('#password').val(""); 
-				$('textarea').hide();
-				$('textarea').prev().show();					
-			});
-		    $('a[id=cancelBtn]').hide();
-	 		$('a[id=commitBtn]').hide();
+			isBranchExisting();
+			if(branchExist == true){
+				editComment -= 1;
+				commitMessage = $('#commitMessage').val();			
+				if(commitMessage == ""){ commitMessage = "New commit";}
+				if(sessionStarted == true){	
+					if ($.trim(updateComment) == ''){ this.value = (this.defaultValue ? this.defaultValue : ''); }
+			     	else{ startCommitProcess(); }
+			     }	
+			     $('#modal, #modalQuestion').fadeOut(function() {
+					$('#login').val("");
+					$('#password').val(""); 
+					$('textarea').hide();
+					$('textarea').prev().show();					
+				});
+			    $('a[id=cancelBtn]').hide();
+		 		$('a[id=commitBtn]').hide();
+	 		}
  		}
 		else{ editComment -= 1; }	
 	});
+	
+	// Cancel creating branch
+	$('#btnCancelBranch').click(function(){
+		editComment -= 1;
+   	 	$('#modalQuestion').hide();
+   	 	$('#fade , #modal').fadeOut(function() { $('#fade, a.close').remove(); });
+		return;
+   	});
+
+   	// Create new branch and continu
+   	$('#btnCreateBranch').click(function(){
+   	 	$('#modalQuestion').hide();
+   	 	if($('#btnCreateBranch').text() != 'Ok'){
+	   	 	// Create the branch
+	   	 	createBranch();
+   	 		commitMessage = $('#commitMessage').val();
+			if(commitMessage == ""){ commitMessage = "New commit"; }
+			if(userB64 != ""){	
+				if ($.trim(updateComment) == ''){ this.value = (this.defaultValue ? this.defaultValue : ''); }
+		     	else{ startCommitProcess(); }
+		    }
+		}
+		else
+		{
+			$('#fade , #modalQuestion, #modal').fadeOut(function() { $('#fade, a.close').remove(); });
+		}
+   	});
+
 });
 
 /* Parse current URL and return anchor name */
@@ -1039,6 +1071,66 @@ function isRepoExisting(){
         {        	
         	displayMessage('Repo not found !', 35, 45);
         	repoExist = false;
+        }
+    });
+}
+
+// Check if the branch already exist
+function isBranchExisting(){
+	$.ajax({
+        beforeSend: function (xhr) { 
+            if (userB64 != "") { xhr.setRequestHeader ("Authorization", userB64); }
+        },
+        type: "GET", 
+        url: "https://api.github.com/repos/"+userName+"/"+githubRepo+"/git/refs/heads/"+branchName, 
+        async:false,
+        dataType:'json',
+        success: function(){ branchExist = true; },
+        error: function()
+        {
+        	branchExist = false;
+        	editComment -= 1;
+        	$('#modal').hide();
+        	$('#txtQuestion').text("Are you sure you want to create that branch ?");
+        	$('#btnCancelBranch').show();
+        	$('#btnCreateBranch').text("Yes");
+			$('#modalQuestion').show();
+			$('#modalQuestion').show().prepend('<a class="close"><img src="resources/icons/close.png" class="btnCloseQuestion" title="Close" alt="Close" /></a>');
+			$('body').append('<div id="fade"></div>');
+			$('#fade').css({'filter' : 'alpha(opacity=80)'}).fadeIn();
+        }
+    });
+}
+
+function getMasterSha() 
+{
+    $.ajax({
+        beforeSend: function (xhr) { 
+            if (userB64 != ""){ xhr.setRequestHeader ("Authorization", userB64); }
+        },
+        type: "GET",
+        url: "https://api.github.com/repos/"+userName+"/"+githubRepo+"/git/refs/heads/master",
+        dataType:"json",
+        async: false,
+        success: function(success) { shaMaster = success.object.sha; }
+    });
+}
+
+function createBranch(){
+
+	getMasterSha();
+
+	$.ajax({ 
+        beforeSend: function (xhr) { xhr.setRequestHeader ("Authorization", userB64); },
+        type: "POST",
+        url: "https://api.github.com/repos/"+userName+"/"+githubRepo+"/git/refs", 
+        data:'{ "ref" : "refs/heads/'+branchName+'",'+
+        		'"sha" : "'+shaMaster+'"'+
+            '}',
+        success: function(){ return; },
+        error: function(){
+        	editComment -= 1;        	
+        	displayMessage('Impossible to create the new branch : ' + branchName, 40, 40);
         }
     });
 }
