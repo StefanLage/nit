@@ -4,6 +4,8 @@ var sessionStarted = false;
 var editComment = 0;
 var currentfileContent = '';
 var addNewComment = false;
+var commentLineStart;
+var commentLineEnd;
 
 // SHA GitHub
 var shaLastCommit = "";
@@ -71,12 +73,10 @@ $(document).ready(function() {
 	$('a[id=commitBtn]').hide();
 	$('a[id=cancelBtn]').hide();
 	// Hide Authenfication form
-	$(".popover").hide();    
-    // Update display
+	$(".popover").hide();        
+    githubRepo = $('#repoName').attr('name');    
+	// Update display
     updateDisplaying();
-    githubRepo = $('#repoName').attr('name');
-    // Load comment from the original repo
-	reloadComment();	
 	/*
 	* Highlight the spoted element
 	*/
@@ -683,6 +683,7 @@ function displayLogginModal(){
 function updateDisplaying(){
 	if (checkCookie() == true)
 	{
+		userB64 = "Basic " + getUserPass("logginNitdoc"); 
 	  	$('#loginGit').hide();
 	  	$('#passwordGit').hide();
 	  	$('#lbpasswordGit').hide();		
@@ -700,6 +701,7 @@ function updateDisplaying(){
 	  	$('.popover').css({'height' : '80px'});	
 	  	$('#signIn').text("Sign out");	
 	  	sessionStarted = true;
+	  	reloadComment();
 	}
 	else
 	{
