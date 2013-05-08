@@ -14,6 +14,27 @@ var shaMaster;
 var repoExist;
 var branchExist;
 
+// Spinner vars
+var opts = {
+	  lines: 11, // The number of lines to draw
+	  length: 7, // The length of each line
+	  width: 4, // The line thickness
+	  radius: 10, // The radius of the inner circle
+	  corners: 1, // Corner roundness (0..1)
+	  rotate: 0, // The rotation offset
+	  color: '#FFF', // #rgb or #rrggbb
+	  speed: 1, // Rounds per second
+	  trail: 60, // Afterglow percentage
+	  shadow: false, // Whether to render a shadow
+	  hwaccel: false, // Whether to use hardware acceleration
+	  className: 'spinner', // The CSS class to assign to the spinner
+	  zIndex: 99999, // The z-index (defaults to 2000000000)
+	  top: '300', // Top position relative to parent in px
+	  left: 'auto' // Left position relative to parent in px
+	};
+var targetSpinner = document.getElementById('waitCommit');
+var	spinner = new Spinner(opts).spin(targetSpinner);
+
 /*
 * JQuery Case Insensitive :icontains selector
 */
@@ -515,7 +536,10 @@ $(document).ready(function() {
 				if(commitMessage == ""){ commitMessage = "New commit";}
 				if(sessionStarted == true){	
 					if ($.trim(updateComment) == ''){ this.value = (this.defaultValue ? this.defaultValue : ''); }
-			     	else{ startCommitProcess(); }
+			     	else{ 
+			     		displaySpinner();
+			     		startCommitProcess(); 
+			     	}
 			     }	
 			     $('#modal, #modalQuestion').fadeOut(function() {
 					$('#login').val("");
@@ -831,21 +855,7 @@ base64.encode = function(s) {
     return x.join('');
 }
 
-$.fn.spin = function(opts) {
-  this.each(function() {
-    var $this = $(this),
-        data = $this.data();
 
-    if (data.spinner) {
-      data.spinner.stop();
-      delete data.spinner;
-    }
-    if (opts !== false) {
-      data.spinner = new Spinner($.extend({color: $this.css('color')}, opts)).spin(this);
-    }
-  });
-  return this;
-};
 
 function getLastCommit() 
 {   
@@ -1044,6 +1054,7 @@ function getCommentLastCommit(path){
 }
 
 function displayMessage(msg, widthDiv, margModal){	
+	spinner.stop();
 	$('#modal').hide();
 	$('#btnCreateBranch').css('margin-left',widthDiv + '%');
 	$('#txtQuestion').text(msg);
@@ -1054,6 +1065,11 @@ function displayMessage(msg, widthDiv, margModal){
 	$('#modalQuestion').show().prepend('<a class="close"><img src="resources/icons/close.png" class="btnCloseQuestion" title="Close" alt="Close" /></a>');
 	$('body').append('<div id="fade"></div>');
 	$('#fade').css({'filter' : 'alpha(opacity=80)'}).fadeIn();
+}
+
+function displaySpinner(){
+	spinner.spin(targetSpinner);
+	$("#waitCommit").show();
 }
 
 // Check if the repo already exist
@@ -1134,3 +1150,19 @@ function createBranch(){
         }
     });
 }
+
+$.fn.spin = function(opts) {
+  this.each(function() {
+    var $this = $(this),
+        data = $this.data();
+
+    if (data.spinner) {
+      data.spinner.stop();
+      delete data.spinner;
+    }
+    if (opts !== false) {
+      data.spinner = new Spinner($.extend({color: $this.css('color')}, opts)).spin(this);
+    }
+  });
+  return this;
+};
