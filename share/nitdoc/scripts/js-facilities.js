@@ -618,6 +618,15 @@ $(document).ready(function() {
 			reloadComment();
 		});
 	});
+
+	$("pre").hover(
+		function () {
+			$(this).css({'cursor' : 'hand'});	
+		},
+		function () {
+			$(this).css({'cursor' : 'pointer'});	
+		}
+	);
 });
 
 /* Parse current URL and return anchor name */
@@ -712,7 +721,7 @@ function updateDisplaying(){
 	  	$('.popover').css({'height' : '120px'});	
 	  	$('#signIn').text("Sign out");	
 	  	sessionStarted = true;
-	  	reloadComment();
+	  	reloadComment();	  	
 	}
 	else
 	{
