@@ -438,6 +438,7 @@ $(document).ready(function() {
 		{
 			// Delete cookie and reset settings
 			del_cookie("logginNitdoc");
+			closeAllCommentInEdtiting();
 		}	
 		displayLogginModal();
 	});
@@ -479,16 +480,8 @@ $(document).ready(function() {
     });
 
    	// Disable the edit mode
-   	$('a[id=cancelBtn]').click(function(){
-   	 	if(editComment > 0){ editComment -= 1; }
-   	 	// Hide itself
-   	 	$(this).hide();
-   	 	// Hide commitBtn
-   	 	$(this).next().hide();
-   	 	// Hide Textarea
-   	 	$(this).prev().hide();
-   	 	// Show comment
-   	 	$(this).prev().prev().show();
+   	$('a[id=cancelBtn]').click(function(){   	 	
+   	 	closeEditing($(this));
    	 });
 
    	// Display commit form
@@ -621,6 +614,7 @@ $(document).ready(function() {
 			}			
 		});		
 		$.when(updateCookie(userName, password, repoName, branchName)).done(function(){			
+			closeAllCommentInEdtiting();
 			reloadComment();
 		});
 	});
@@ -1288,4 +1282,22 @@ function getListBranches()
 // Delete all option in the list
 function cleanListBranches(){
 	$('#dropBranches').children("option").remove();
+}
+
+function closeAllCommentInEdtiting(){
+	$('a[id=cancelBtn]').each(function(){
+		closeEditing($(this));
+ 	});
+}
+
+function closeEditing(tag){
+	if(editComment > 0){ editComment -= 1; }
+ 	// Hide itself
+ 	tag.hide();
+ 	// Hide commitBtn
+ 	tag.next().hide();
+ 	// Hide Textarea
+ 	tag.prev().hide();
+ 	// Show comment
+ 	tag.prev().prev().show();
 }
