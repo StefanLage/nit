@@ -3,6 +3,7 @@ var userB64 = null;
 var sessionStarted = false;
 var editComment = 0;
 var currentfileContent = '';
+var addNewComment = false;
 
 // SHA GitHub
 var shaLastCommit = "";
@@ -592,6 +593,24 @@ $(document).ready(function() {
 		}
    	});
 
+   	$('a[class=newComment]').click(function(){
+   	 	addNewComment = true;   	 	
+   	 	editComment += 1;
+   		// hide comment
+        $(this).hide();
+        // Show edit box 
+        $(this).next().show();
+        // Show cancel button
+        $(this).next().next().show();  
+        // Show commit button
+        $(this).next().next().next().show();        	        
+        // Resize edit box 
+    	$(this).next().height($(this).next().prop("scrollHeight"));
+    	// Select it
+        $(this).next().select();
+        preElement = $(this);  
+   	 });
+
 });
 
 /* Parse current URL and return anchor name */
@@ -646,6 +665,7 @@ function startCommitProcess()
 {
 	var numL = preElement.attr("title");		         		
 	commentLineStart = numL.split('-')[0] - 1;	
+	if(addNewComment == true) { commentLineStart++; }
 	commentLineEnd = (commentLineStart + preElement.text().split('\n').length) - 1;
 	state = true;	
 	replaceComment(updateComment, currentfileContent);
@@ -1029,6 +1049,13 @@ function replaceComment(newComment, fileContent){
     var lines = fileContent.split("\n");
 	for (var i = 0; i < lines.length; i++) {
 		if(i == commentLineStart){
+			if(addNewComment == true){
+				for(var indexLine=0; indexLine < lines[i+1].length; indexxLine++){        			
+        			if(lines[i+1].substr(indexLine,1) == "\t" || lines[i+1].substr(indexLine,1) == "#"){ text += lines[i+1].substr(indexLine,1); }
+        			else{ break;}
+        		}  
+        		text += lines[i] + "\n"; 
+			}
 			// We change the comment
 		    for(var j = 0; j < lNew; j++){
 		    	if(commentType == 1){ text += "\t# " + arrayNew[j] + "\n"; }
@@ -1042,6 +1069,9 @@ function replaceComment(newComment, fileContent){
         	if(i == lines.length-1){ text += lines[i]; } 
         	else{ text += lines[i] + "\n"; }
         }
+    }
+    if(addNewComment == true){
+    	addNewComment = false;
     }
 }
 
