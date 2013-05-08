@@ -1,5 +1,7 @@
 // User
 var userB64 = null;
+var userName = "";
+var password = "";
 var sessionStarted = false;
 var editComment = 0;
 var currentfileContent = '';
@@ -429,6 +431,7 @@ $(document).ready(function() {
 				setCookie("logginNitdoc", base64.encode(userName+':'+password+':'+repoName+':'+branchName), 1);				
 				$('#loginGit').val("");
 				$('#passwordGit').val("");
+				reloadComment();
 			}
 		}	
 		else
@@ -442,7 +445,7 @@ $(document).ready(function() {
 	// Activate edit mode
    	$('pre[class=text_label]').click(function(){
    			// the customer is loggued ?
-			if(sessionStarted == false || userName == ""){
+			if(sessionStarted == false || userB64 == ""){
 				// No => nothing happen
 				return;
 			}
@@ -466,7 +469,7 @@ $(document).ready(function() {
         	// Show commit button
         	$(this).next().next().next().show();
         	// Add text in edit box      
-        	if($(this).next().val() == ""){ $(this).next().val(adapt); }
+        	if($(this).next().val() == "" || $(this).next().val() != adapt){ $(this).next().val(adapt); }
         	// Resize edit box 
     		$(this).next().height($(this).next().prop("scrollHeight"));
     		// Select it
@@ -611,6 +614,16 @@ $(document).ready(function() {
         preElement = $(this);  
    	 });
 
+   	$("#dropBranches").change(function () {		
+		$("#dropBranches option:selected").each(function () {			
+			if(branchName != $(this).text()){
+				branchName = $(this).text();					
+			}			
+		});		
+		$.when(updateCookie(userName, password, repoName, branchName)).done(function(){			
+			reloadComment();
+		});
+	});
 });
 
 /* Parse current URL and return anchor name */
@@ -675,7 +688,10 @@ function startCommitProcess()
 }
 
 function displayLogginModal(){
-	if ($('.popover').is(':hidden')) { $('.popover').show(); }
+	if ($('.popover').is(':hidden')) { 
+		if(sessionStarted == true){ getListBranches(); }
+		$('.popover').show(); 
+	}
 	else { $('.popover').hide(); }	
 	updateDisplaying();
 }
@@ -691,14 +707,15 @@ function updateDisplaying(){
 	  	$('#repositoryGit').hide();
 	  	$('#lbrepositoryGit').hide();
 	  	$('#lbbranchGit').hide();  
-	  	$('#branchGit').hide();   			  		 
+	  	$('#branchGit').hide(); 
+	  	$('#listBranches').show();    			  		 
 	  	$("#liGitHub").attr("class", "current");
 	  	$("#imgGitHub").attr("src", "resources/icons/github-icon-w.png");
 	  	$('#nickName').text(userName);	  	
 	  	$('#githubAccount').attr("href", "https://github.com/"+userName);
 	  	$('#logginMessage').css({'display' : 'block'});
 	  	$('#logginMessage').css({'text-align' : 'center'});	
-	  	$('.popover').css({'height' : '80px'});	
+	  	$('.popover').css({'height' : '120px'});	
 	  	$('#signIn').text("Sign out");	
 	  	sessionStarted = true;
 	  	reloadComment();
@@ -725,6 +742,7 @@ function updateDisplaying(){
 	  	$('#lbrepositoryGit').show();
 	  	$('#lbbranchGit').show();  
 	  	$('#branchGit').show();  
+	  	$('#listBranches').hide();
 	}
 }
 
@@ -739,6 +757,13 @@ function setCookie(c_name, value, exdays)
 function del_cookie(c_name)
 {
     document.cookie = c_name + '=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
+function updateCookie(user, pwd, repo, branch){
+	if(checkCookie() == true){
+		branchName = branch;
+		setCookie("logginNitdoc", base64.encode(user+':'+pwd+':'+repo+':'+branch), 1);	
+	}
 }
 
 function getCookie(c_name)
@@ -769,6 +794,7 @@ function checkCookie()
 	{
 		cookie = base64.decode(cookie);
 		userName = cookie.split(':')[0];
+		password = cookie.split(':')[1];
 		repoName = cookie.split(':')[2];		
 		branchName = cookie.split(':')[3];
 	  	return true;
@@ -1232,4 +1258,34 @@ function getCommentOfFunction(element){
 	    }    
 	    if (textC != ""){ element.text(textC); }    	
 	}	
+}
+
+// Get list of branches
+function getListBranches()
+{
+	cleanListBranches();
+    $.ajax({
+        beforeSend: function (xhr) { 
+            if ($("#login").val() != ""){ xhr.setRequestHeader ("Authorization", userB64); }
+        },
+        type: "GET", 
+        url: "https://api.github.com/repos/"+userName+"/"+githubRepo+"/branches", 
+        async:false,
+        dataType:'json',
+        success: function(success)
+        {   
+            for(var branch in success) { 
+            	var selected = '';
+            	if(branchName == success[branch].name){        	
+            		selected = 'selected';	
+            	}            	
+            	$('#dropBranches').append('<option value="" '+ selected +'>' + success[branch].name + '</option>');	            	            
+            }
+        }
+    });
+}
+
+// Delete all option in the list
+function cleanListBranches(){
+	$('#dropBranches').children("option").remove();
 }
