@@ -41,3 +41,8 @@ tests/out
 *.stub.nit.[ch]
 
 .metadata/*
+
+
+
+
+test/
