@@ -29,12 +29,12 @@ class ReadModule
 	end
 	
 	# Associate classes to their properties in a HashMap
-	fun save_classes_and_prop(mmodule: MModule) do
+	private fun save_classes_and_prop(mmodule: MModule) do
 		hmClasses = new HashMap[MClass, Set[MProperty]]
 		for cl in mmodule.mclassdefs do hmClasses[cl.mclass] =  mmodule.properties(cl.mclass)
 	end
 
-	fun properties_info(cl: MClass, prop: MProperty): String do
+	private fun properties_info(cl: MClass, prop: MProperty): String do
 		var str = "{prop.to_s}:".under_line
 		var cl_intro = prop.intro_mclassdef.mclass
 		var properties = new Array[MPropDef]
@@ -76,7 +76,7 @@ class ReadModule
 		print_legend
 	end
 	
-	fun print_legend do	
+	private fun print_legend do	
 		print "\nLEGEND".under_line
 		print "\tpublic".green
 		print "\tprotected".yellow
@@ -148,9 +148,7 @@ end
 redef class MClass
 	
 	# Print in which MModule is define this MClass
-	fun print_defined_by do
-		print "\tDefined by the module {intro_mmodule.to_s.green}\n"
-	end
+	fun print_defined_by do print "\tDefined by the module {intro_mmodule.to_s.green}\n"
 
 	# Print all parents of itself
 	fun print_parent do
