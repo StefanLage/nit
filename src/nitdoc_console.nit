@@ -1,37 +1,40 @@
 import modelbuilder
 import exprbuilder
 import abstract_compiler
-#import metrics
 
-class ReadModule
-	var toolContext = new ToolContext
+class Nitdoc
+	var toolcontext = new ToolContext
 	var model = new Model
-	var modelBuilder: ModelBuilder
+	var modelbuilder: ModelBuilder
 	var arguments: Array[String]
-	var prog: String
+	var prog: nullable String
 	var main: nullable MModule
-	var hmClasses: HashMap[MClass, Set[MProperty]]
-	var modules: Array[MModule]
+	var hmclasses: nullable HashMap[MClass, Set[MProperty]]
+	var modules: nullable Array[MModule]
 	var sorter: nullable MClassSorter[Object]
 	
 	init do
-		toolContext.process_options
-		modelBuilder = new ModelBuilder(model, toolContext)
-		arguments = toolContext.option_context.rest
+		toolcontext.process_options
+		modelbuilder = new ModelBuilder(model, toolcontext)
+		arguments = toolcontext.option_context.rest
+		if arguments.is_empty or toolcontext.opt_help.value then
+			toolcontext.option_context.usage
+			return
+		end
 		prog = arguments.first
-		hmClasses = new HashMap[MClass, Set[MProperty]]
+		hmclasses = new HashMap[MClass, Set[MProperty]]
 		modules = new Array[MModule]
 	end
 
 	fun run_process_to_get_modules do
-		modules = modelBuilder.parse_and_build([prog])
-		modelBuilder.full_propdef_semantic_analysis
+		modules = modelbuilder.parse_and_build([prog.as(not null)])
+		modelbuilder.full_propdef_semantic_analysis
 	end
-	
+
 	# Associate classes to their properties in a HashMap
 	private fun save_classes_and_prop(mmodule: MModule) do
-		hmClasses = new HashMap[MClass, Set[MProperty]]
-		for cl in mmodule.mclassdefs do hmClasses[cl.mclass] =  mmodule.properties(cl.mclass)
+		hmclasses = new HashMap[MClass, Set[MProperty]]
+		for cl in mmodule.mclassdefs do hmclasses[cl.mclass] =  mmodule.properties(cl.mclass)
 	end
 
 	private fun properties_info(cl: MClass, prop: MProperty): String do
@@ -51,6 +54,7 @@ class ReadModule
 	end
 	
 	fun process do
+		if prog is null then return
 		run_process_to_get_modules
 		for mmodule in model.mmodules do
 			save_classes_and_prop(mmodule)
@@ -67,7 +71,7 @@ class ReadModule
 				curclass.print_refined(mmodule)
 				curclass.print_sub_class
 
-				var arrProp = hmClasses[curclass].to_a
+				var arrProp = hmclasses[curclass].to_a
 				for p in arrProp do print "\n\t\t- {properties_info(curclass,p)}"	
 				print "\n----------------------------------------------------\n"
 				i+=1
@@ -196,5 +200,5 @@ class Html
 
 end
 
-var read = new ReadModule
+var read = new Nitdoc
 read.process
