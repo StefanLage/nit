@@ -12,12 +12,13 @@ class NitdocWeb
 	private var opt_dir = new OptionString("Directory where doc is generated", "-d", "--dir")
 	private var opt_source = new OptionString("What link for source (%f for filename, %l for first line, %L for last line)", "--source")
 	private var opt_sharedir = new OptionString("Directory containing the nitdoc files", "--sharedir")
-
+	private var opt_nodot = new OptionBool("Do not generate graphes with graphiviz", "--no-dot")
 
 	init do 
 		toolcontext.option_context.add_option(opt_dir)
 		toolcontext.option_context.add_option(opt_source)
 		toolcontext.option_context.add_option(opt_sharedir)
+		toolcontext.option_context.add_option(opt_nodot)
 		super
 	end
 
@@ -62,13 +63,16 @@ class NitdocWeb
 	end
 
 	fun generate_overview  do
-		var overviewpage = new NitdocOverview.with(model.mmodules)
+		var overviewpage = new NitdocOverview.with(model.mmodules, self.opt_nodot.value, destinationdir.to_s)
 		overviewpage.save("{destinationdir.to_s}/index.html")
 	end
 
 end
 
 redef class HTMLPage
+	var opt_nodot: Bool
+	var destinationdir : String	
+
 	redef fun head do
 		add("meta").attr("charset", "utf-8")
 		add("script").attr("type", "text/javascript").attr("src", "scripts/jquery-1.7.1.min.js")
@@ -79,6 +83,22 @@ redef class HTMLPage
 
 	redef fun body do header
 	fun header do end
+	
+	# Generate a clickable graphviz image using a dot content
+	fun generate_dot(dot: String, name: String, alt: String) do
+		if opt_nodot then return
+		var file = new OFStream.open("{self.destinationdir}/{name}.dot")
+		file.write(dot)
+		file.close
+		sys.system("\{ test -f {self.destinationdir}/{name}.png && test -f {self.destinationdir}/{name}.s.dot && diff {self.destinationdir}/{name}.dot {self.destinationdir}/{name}.s.dot >/dev/null 2>&1 ; \} || \{ cp {self.destinationdir}/{name}.dot {self.destinationdir}/{name}.s.dot && dot -Tpng -o{self.destinationdir}/{name}.png -Tcmapx -o{self.destinationdir}/{name}.map {self.destinationdir}/{name}.s.dot ; \}")
+		
+		open("article").add_class("graph")
+		add("img").attr("src", "{name}.png").attr("usemap", "#{name}").attr("style", "margin:auto").attr("alt", "{alt}")
+		close("article")
+		var fmap = new IFStream.open("{self.destinationdir}/{name}.map")
+		add_html(fmap.read_all)
+		fmap.close
+	end
 end
 
 class NitdocOverview
@@ -86,8 +106,11 @@ class NitdocOverview
 
 	var mmodules: Array[MModule]
 
-	init with(modules: Array[MModule]) do self.mmodules = modules
-
+	init with(modules: Array[MModule], opt_nodot: Bool, destination: String) do
+		self.mmodules = modules
+		self.opt_nodot = opt_nodot
+		self.destinationdir = destination
+	end
 	redef fun head do
 		super
 		add("title").text("Overview | Nit Standard Library")
@@ -155,6 +178,7 @@ class NitdocOverview
 		open("ul")
 		add_modules
 		close("ul")
+		process_generate_dot
 		close("article")
 		close("div")
 		close("div")
@@ -168,6 +192,20 @@ class NitdocOverview
 			add("a").attr("href", "{mmodule.name}.html").text("{mmodule.to_s}")
 			close("li")
 		end
+	end
+	
+	fun process_generate_dot do
+		var op = new Buffer
+		op.append("digraph dep \{ rankdir=BT; node[shape=none,margin=0,width=0,height=0,fontsize=10]; edge[dir=none,color=gray]; ranksep=0.2; nodesep=0.1;\n")
+		for mmodule in mmodules
+		do
+			op.append("\"{mmodule.name}\"[URL=\"{mmodule.name}.html\"];\n")
+			for mmodule2 in mmodule.in_importation.direct_greaters do
+				op.append("\"{mmodule.name}\"->\"{mmodule2.name}\";\n")
+			end
+		end
+		op.append("\}\n")
+		generate_dot(op.to_s, "dep", "Modules hierarchy")
 	end
 end
 
