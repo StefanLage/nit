@@ -76,6 +76,16 @@ redef class HTMLPage
 		add("script").attr("type", "text/javascript").attr("src", "scripts/js-facilities.js")
 		add("link").attr("rel", "stylesheet").attr("href", "styles/main.css").attr("type", "text/css").attr("media", "screen")
 	end
+
+	redef fun body do
+		open("header")
+		open("nav").add_class("main")
+		open("ul")
+		add("li").text("Overview")
+		close("ul")
+		close("nav")
+		close("header")
+	end
 end
 
 class NitdocOverview
@@ -91,6 +101,8 @@ class NitdocOverview
 	end
 
 	redef fun body do
+		super
+
 		open("div").add_class("page")
 		open("div").add_class("content fullpage")
 		add("h1").text("Nit Standard Library")
