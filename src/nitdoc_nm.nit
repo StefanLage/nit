@@ -87,11 +87,7 @@ end
 
 # Redef String class to add a function to color the string
 redef class String
-	
-	private fun add_escape_char(escapechar: String): String do
-		return "{escapechar}{self}\033[0m"
-	end
-
+	private fun add_escape_char(escapechar: String): String do return "{escapechar}{self}{esc}[0m"
 	private fun esc: Char do return 27.ascii
 	private fun red: String do return add_escape_char("{esc}[1;31m")
 	private fun yellow: String do return add_escape_char("{esc}[1;33m")
