@@ -8,6 +8,8 @@ class NitdocWeb
 	# By default it's generated in current_path/nitdoc
 	var destinationdir: nullable String
 	var sharedir: nullable String
+	var mclasses: Array[MClass]
+	var mproperties: Array[MProperty]
 
 	private var opt_dir = new OptionString("Directory where doc is generated", "-d", "--dir")
 	private var opt_source = new OptionString("What link for source (%f for filename, %l for first line, %L for last line)", "--source")
@@ -20,6 +22,8 @@ class NitdocWeb
 		toolcontext.option_context.add_option(opt_sharedir)
 		toolcontext.option_context.add_option(opt_nodot)
 		super
+		mclasses = model.mclasses
+		mproperties = model.mproperties
 	end
 
 	redef fun process do 
@@ -64,13 +68,13 @@ class NitdocWeb
 	end
 
 	fun generate_overview  do
-		var overviewpage = new NitdocOverview.with(model.mmodules, self.opt_nodot.value, destinationdir.to_s)
+		var overviewpage = new NitdocOverview.with(modelbuilder.nmodules, self.opt_nodot.value, destinationdir.to_s)
 		overviewpage.save("{destinationdir.to_s}/index.html")
 	end
 
 	fun generate_fullindex do
 		for mod in model.mmodules do save_classes_and_prop(mod)
-		var fullindex = new NitdocFullindex.with(model.mmodules, hmclasses)
+		var fullindex = new NitdocFullindex.with(model.mmodules, self.mclasses, self.mproperties)
 		fullindex.save("{destinationdir.to_s}/full-index.html")
 	end
 
@@ -115,10 +119,10 @@ end
 class NitdocOverview
 	super HTMLPage
 
-	var mmodules: Array[MModule]
+	var amodules: Array[AModule]
 
-	init with(modules: Array[MModule], opt_nodot: Bool, destination: String) do
-		self.mmodules = modules
+	init with(modules: Array[AModule], opt_nodot: Bool, destination: String) do
+		self.amodules = modules
 		self.opt_nodot = opt_nodot
 		self.destinationdir = destination
 	end
@@ -204,10 +208,11 @@ class NitdocOverview
 	end
 
 	fun add_modules do
-		for mmodule in mmodules
+		for amodule in amodules
 		do
 			open("li")
-			add("a").attr("href", "{mmodule.name}.html").text("{mmodule.to_s}")
+			add("a").attr("href", "{amodule.mmodule.name}.html").text("{amodule.mmodule.to_s}")
+			if not amodule.n_moduledecl is null then add_html(amodule.n_moduledecl.n_doc.n_comment.first.text_nitdoc)
 			close("li")
 		end
 	end
@@ -215,11 +220,11 @@ class NitdocOverview
 	fun process_generate_dot do
 		var op = new Buffer
 		op.append("digraph dep \{ rankdir=BT; node[shape=none,margin=0,width=0,height=0,fontsize=10]; edge[dir=none,color=gray]; ranksep=0.2; nodesep=0.1;\n")
-		for mmodule in mmodules
+		for amodule in amodules
 		do
-			op.append("\"{mmodule.name}\"[URL=\"{mmodule.name}.html\"];\n")
-			for mmodule2 in mmodule.in_importation.direct_greaters do
-				op.append("\"{mmodule.name}\"->\"{mmodule2.name}\";\n")
+			op.append("\"{amodule.mmodule.name}\"[URL=\"{amodule.mmodule.name}.html\"];\n")
+			for mmodule2 in amodule.mmodule.in_importation.direct_greaters do
+				op.append("\"{amodule.mmodule.name}\"->\"{mmodule2.name}\";\n")
 			end
 		end
 		op.append("\}\n")
@@ -233,10 +238,13 @@ class NitdocFullindex
 	var mmodules: Array[MModule]
 	var hmclasses: nullable HashMap[MClass, Set[MProperty]]
 	var lsproperties: nullable List[MProperty]
+	var mclasses: Array[MClass]
+	var mproperties: Array[MProperty]
 
-	init with(mmodules: Array[MModule], hmclasses: nullable HashMap[MClass, Set[MProperty]]) do
+	init with(mmodules: Array[MModule], classes: Array[MClass], properties: Array[MProperty]) do
 		self.mmodules = mmodules
-		self.hmclasses = hmclasses
+		self.mclasses = classes
+		self.mproperties = properties
 		opt_nodot = false
 		destinationdir = ""
 	end
@@ -313,16 +321,6 @@ class NitdocFullindex
 	end
 
 	fun add_content do
-		lsproperties = new List[MProperty]
-		for k, v in hmclasses.as(not null)
-		do
-			for prop in v
-			do
-				if lsproperties.has(prop) then continue
-				lsproperties.push(prop)
-			end
-		end
-
 		# Adding Modules column
 		module_column
 		classes_column
@@ -349,7 +347,7 @@ class NitdocFullindex
 		open("article").add_class("classes filterable")
 		add("h2").text("Classes")
 		open("ul")
-		for mclass in hmclasses.keys
+		for mclass in mclasses
 		do
 			open("li")
 			add("a").attr("href", "{mclass.name}.html").text(mclass.name)
@@ -363,7 +361,7 @@ class NitdocFullindex
 		open("article").add_class("properties filterable")
 		add("h2").text("Properties")
 		open("ul")
-		for prop in lsproperties.as(not null)
+		for prop in mproperties
 		do
 			if prop.intro isa MAttribute then continue
 
@@ -384,6 +382,11 @@ redef class MProperty
 		var classdef = self.intro_mclassdef
 		return classdef.mclass
 	end
+end
+
+redef class TComment
+	# Delete comment char of text
+	fun text_nitdoc: String do return text.replace("#", " ")
 end
 
 var read = new NitdocWeb
