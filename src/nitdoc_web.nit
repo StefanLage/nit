@@ -37,6 +37,7 @@ class NitdocWeb
 		# Generate HTML pages
 		generate_overview
 		generate_fullindex
+		generate_modules
 	end
 	
 	private fun process_options do
@@ -76,6 +77,13 @@ class NitdocWeb
 		for mod in model.mmodules do save_classes_and_prop(mod)
 		var fullindex = new NitdocFullindex.with(model.mmodules, self.mclasses, modelbuilder.mpropdef2npropdef)
 		fullindex.save("{destinationdir.to_s}/full-index.html")
+	end
+
+	fun generate_modules do
+		for mod in modelbuilder.nmodules do
+			var modulepage = new NitdocModules.with(mod)
+			modulepage.save("{destinationdir.to_s}/{mod.mmodule.name}.html")
+		end
 	end
 
 	redef fun save_classes_and_prop(mmodule: MModule) do
@@ -376,6 +384,114 @@ class NitdocFullindex
 		end
 		close("ul")
 		close("article")
+	end
+
+end
+
+class NitdocModules
+	super HTMLPage
+	
+	var amodule: AModule
+	var modulename: String
+	init with(amodule: AModule) do
+		self.amodule = amodule
+		self.modulename = self.amodule.mmodule.name
+		opt_nodot = false
+		destinationdir = ""
+	end
+
+	redef fun head do
+		super
+		add("title").text("{modulename} module | Nit Standard Library")
+	end
+
+	redef fun header do
+		open("header")
+		open("nav").add_class("main")
+		open("ul")
+		open("li")
+		add_html("<a href=\"index.html\">Overview</a>")
+		close("li")
+		add("li").add_class("current").text(modulename)
+		open("li")
+		add_html("<a href=\"full-index.html\" >Full Index</a>")
+		close("li")
+		open("li")
+		add_html("<a href=\"help.html\">Help</a>")
+		close("li")
+		open("li").attr("id", "liGitHub")
+		open("a").add_class("btn").attr("id", "logGitHub")
+		add("img").attr("id", "imgGitHub").attr("src", "resources/icons/github-icon.png")
+		close("a")
+		open("div").add_class("popover bottom")
+		add("div").add_class("arrow").text(" ")
+		open("div").add_class("githubTitle")
+		add("h3").text("Github Sign In")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbloginGit").text("Username")
+		add("input").attr("id", "loginGit").attr("name", "login").attr("type", "text")
+		open("label").attr("id", "logginMessage").text("Hello ")
+		open("a").attr("id", "githubAccount")
+		add("strong").attr("id", "nickName").text(" ")
+		close("a")
+		close("label")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbpasswordGit").text("Password")
+		add("input").attr("id", "passwordGit").attr("name", "password").attr("type", "password")
+		open("div").attr("id", "listBranches")
+		add("label").attr("id", "lbBranches").text("Branch")
+		add("select").add_class("dropdown").attr("id", "dropBranches").attr("name", "dropBranches").attr("tabindex", "1").text(" ")
+		close("div")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbrepositoryGit").text("Repository")
+		add("input").attr("id", "repositoryGit").attr("name", "repository").attr("type", "text")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbbranchGit").text("Branch")
+		add("input").attr("id", "branchGit").attr("name", "branch").attr("type", "text")
+		close("div")
+		open("div")
+		add("a").attr("id", "signIn").text("Sign In")
+		close("div")
+		close("div")
+		close("li")
+		close("ul")
+		close("nav")
+		close("header")
+	end
+
+	redef fun body do
+		super
+		open("div").add_class("page")
+		add_content
+		close("div")
+		add("footer").text("Nit standard library. Version jenkins-component=stdlib-19.")
+	end
+
+	# Insert all tags in content part
+	fun add_content do
+		open("div").add_class("content")
+		add("h1").text(modulename)
+		add("div").add_class("subtitle").text("module {modulename}")
+		add_module_comment
+		close("div")
+	end
+
+	# Insert module comment in the content
+	fun add_module_comment do
+		if amodule.n_moduledecl is null then return
+		var doc = ""
+		for i in amodule.n_moduledecl.n_doc.n_comment do doc += i.text_nitdoc
+		open("div").attr("id", "description")
+		add("pre").add_class("text_label").text(doc)
+		add("textarea").add_class("edit").attr("rows", "1").attr("cols", "76").attr("id", "fileContent")
+		add("a").attr("id", "cancelBtn").text("Cancel")
+		add("a").attr("id", "commitBtn").text("Commit")
+		add("pre").add_class("text_label").attr("id", "preSave").attr("type", "2")
+		close("div")
 	end
 
 end
