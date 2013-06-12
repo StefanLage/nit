@@ -32,6 +32,7 @@ class NitdocWeb
 		
 		# Generate HTML pages
 		generate_overview
+		generate_fullindex
 	end
 	
 	private fun process_options do
@@ -65,6 +66,16 @@ class NitdocWeb
 	fun generate_overview  do
 		var overviewpage = new NitdocOverview.with(model.mmodules, self.opt_nodot.value, destinationdir.to_s)
 		overviewpage.save("{destinationdir.to_s}/index.html")
+	end
+
+	fun generate_fullindex do
+		for mod in model.mmodules do save_classes_and_prop(mod)
+		var fullindex = new NitdocFullindex.with(model.mmodules, hmclasses)
+		fullindex.save("{destinationdir.to_s}/full-index.html")
+	end
+
+	redef fun save_classes_and_prop(mmodule: MModule) do
+		for cl in mmodule.mclassdefs do hmclasses[cl.mclass] = mmodule.properties(cl.mclass)
 	end
 
 end
@@ -111,6 +122,7 @@ class NitdocOverview
 		self.opt_nodot = opt_nodot
 		self.destinationdir = destination
 	end
+	
 	redef fun head do
 		super
 		add("title").text("Overview | Nit Standard Library")
@@ -122,7 +134,10 @@ class NitdocOverview
 		open("ul")
 		add("li").add_class("current").text("Overview")
 		open("li")
-		add("a").attr("href", "help.html").text("Help")
+		add_html("<a href=\"full-index.html\">Full Index</a>")
+		close("li")
+		open("li")
+		add_html("<a href=\"help.html\">Help</a>")
 		close("li")
 		open("li").attr("id", "liGitHub")
 		open("a").add_class("btn").attr("id", "logGitHub")
@@ -130,6 +145,9 @@ class NitdocOverview
 		close("a")
 		open("div").add_class("popover bottom")
 		add("div").add_class("arrow").text(" ")
+		open("div").add_class("githubTitle")
+		add("h3").text("Github Sign In")
+		close("div")
 		open("div")
 		add("label").attr("id", "lbloginGit").text("Username")
 		add("input").attr("id", "loginGit").attr("name", "login").attr("type", "text")
@@ -209,6 +227,164 @@ class NitdocOverview
 	end
 end
 
+class NitdocFullindex
+	super HTMLPage
+
+	var mmodules: Array[MModule]
+	var hmclasses: nullable HashMap[MClass, Set[MProperty]]
+	var lsproperties: nullable List[MProperty]
+
+	init with(mmodules: Array[MModule], hmclasses: nullable HashMap[MClass, Set[MProperty]]) do
+		self.mmodules = mmodules
+		self.hmclasses = hmclasses
+		opt_nodot = false
+		destinationdir = ""
+	end
+
+	redef fun head do
+		super
+		add("title").text("Full Index | Nit Standard Library")
+	end
+
+	redef fun header do
+		open("header")
+		open("nav").add_class("main")
+		open("ul")
+		open("li")
+		add_html("<a href=\"index.html\">Overview</a>")
+		close("li")
+		add("li").add_class("current").text("Full Index")
+		open("li")
+		add_html("<a href=\"help.html\">Help</a>")
+		close("li")
+		open("li").attr("id", "liGitHub")
+		open("a").add_class("btn").attr("id", "logGitHub")
+		add("img").attr("id", "imgGitHub").attr("src", "resources/icons/github-icon.png")
+		close("a")
+		open("div").add_class("popover bottom")
+		add("div").add_class("arrow").text(" ")
+		open("div").add_class("githubTitle")
+		add("h3").text("Github Sign In")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbloginGit").text("Username")
+		add("input").attr("id", "loginGit").attr("name", "login").attr("type", "text")
+		open("label").attr("id", "logginMessage").text("Hello ")
+		open("a").attr("id", "githubAccount")
+		add("strong").attr("id", "nickName").text(" ")
+		close("a")
+		close("label")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbpasswordGit").text("Password")
+		add("input").attr("id", "passwordGit").attr("name", "password").attr("type", "password")
+		open("div").attr("id", "listBranches")
+		add("label").attr("id", "lbBranches").text("Branch")
+		add("select").add_class("dropdown").attr("id", "dropBranches").attr("name", "dropBranches").attr("tabindex", "1").text(" ")
+		close("div")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbrepositoryGit").text("Repository")
+		add("input").attr("id", "repositoryGit").attr("name", "repository").attr("type", "text")
+		close("div")
+		open("div")
+		add("label").attr("id", "lbbranchGit").text("Branch")
+		add("input").attr("id", "branchGit").attr("name", "branch").attr("type", "text")
+		close("div")
+		open("div")
+		add("a").attr("id", "signIn").text("Sign In")
+		close("div")
+		close("div")
+		close("li")
+		close("ul")
+		close("nav")
+		close("header")
+	end
+
+	redef fun body do
+		super
+		open("div").add_class("page")
+		open("div").add_class("content fullpage")
+		add("h1").text("Full Index")
+		add_content
+		close("div")
+		close("div")
+		add("footer").text("Nit standard library. Version jenkins-component=stdlib-19.")
+	end
+
+	fun add_content do
+		lsproperties = new List[MProperty]
+		for k, v in hmclasses.as(not null)
+		do
+			for prop in v
+			do
+				if lsproperties.has(prop) then continue
+				lsproperties.push(prop)
+			end
+		end
+
+		# Adding Modules column
+		module_column
+		classes_column
+		properties_column
+	end
+
+	# Add to content modules column
+	fun module_column do
+		open("article").add_class("modules filterable")
+		add("h2").text("Modules")
+		open("ul")
+		for mmodule in mmodules
+		do
+			open("li")
+			add("a").attr("href", "{mmodule.name}.html").text(mmodule.name)
+			close("li")
+		end
+		close("ul")
+		close("article")
+	end
+
+	# Add to content classes modules
+	fun classes_column do
+		open("article").add_class("classes filterable")
+		add("h2").text("Classes")
+		open("ul")
+		for mclass in hmclasses.keys
+		do
+			open("li")
+			add("a").attr("href", "{mclass.name}.html").text(mclass.name)
+			close("li")
+		end
+		close("ul")
+		close("article")
+	end
+
+	fun properties_column do
+		open("article").add_class("properties filterable")
+		add("h2").text("Properties")
+		open("ul")
+		for prop in lsproperties.as(not null)
+		do
+			if prop.intro isa MAttribute then continue
+
+			open("li").add_class("intro")
+			add("span").attr("title", "introduction").text("I")
+			add_html("&nbsp;")
+			add("a").attr("href", "{prop.local_class.name}.html").attr("title", "{prop.local_class.name}").text("{prop.name}&nbsp; ({prop.local_class.name})")
+			close("li")
+		end
+		close("ul")
+		close("article")
+	end
+
+end
+
+redef class MProperty
+	fun local_class: MClass do
+		var classdef = self.intro_mclassdef
+		return classdef.mclass
+	end
+end
 
 var read = new NitdocWeb
 read.process

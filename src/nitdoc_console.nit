@@ -32,7 +32,7 @@ class Nitdoc
 	end
 
 	# Associate classes to their properties in a HashMap
-	private fun save_classes_and_prop(mmodule: MModule) do
+	fun save_classes_and_prop(mmodule: MModule) do
 		hmclasses = new HashMap[MClass, Set[MProperty]]
 		for cl in mmodule.mclassdefs do hmclasses[cl.mclass] =  mmodule.properties(cl.mclass)
 	end
