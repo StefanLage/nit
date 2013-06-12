@@ -74,7 +74,7 @@ class NitdocWeb
 
 	fun generate_fullindex do
 		for mod in model.mmodules do save_classes_and_prop(mod)
-		var fullindex = new NitdocFullindex.with(model.mmodules, self.mclasses, self.mproperties)
+		var fullindex = new NitdocFullindex.with(model.mmodules, self.mclasses, modelbuilder.mpropdef2npropdef)
 		fullindex.save("{destinationdir.to_s}/full-index.html")
 	end
 
@@ -239,12 +239,12 @@ class NitdocFullindex
 	var hmclasses: nullable HashMap[MClass, Set[MProperty]]
 	var lsproperties: nullable List[MProperty]
 	var mclasses: Array[MClass]
-	var mproperties: Array[MProperty]
+	var propdefs: HashMap[MPropDef, APropdef]
 
-	init with(mmodules: Array[MModule], classes: Array[MClass], properties: Array[MProperty]) do
+	init with(mmodules: Array[MModule], classes: Array[MClass], properties: HashMap[MPropDef, APropdef]) do
 		self.mmodules = mmodules
 		self.mclasses = classes
-		self.mproperties = properties
+		self.propdefs = properties
 		opt_nodot = false
 		destinationdir = ""
 	end
@@ -361,14 +361,17 @@ class NitdocFullindex
 		open("article").add_class("properties filterable")
 		add("h2").text("Properties")
 		open("ul")
-		for prop in mproperties
+		for prop, aprop in propdefs
 		do
-			if prop.intro isa MAttribute then continue
-
+			if prop.mproperty.intro isa MAttribute then continue
+			var propname = prop.mproperty.local_class.name
+			var title = "{prop.mproperty.name} {prop.mproperty.local_class.name}"
+			# Add prop comment if there is one
+			if not aprop.n_doc is null then title += " {aprop.n_doc.n_comment.first.text}"
 			open("li").add_class("intro")
 			add("span").attr("title", "introduction").text("I")
 			add_html("&nbsp;")
-			add("a").attr("href", "{prop.local_class.name}.html").attr("title", "{prop.local_class.name}").text("{prop.name}&nbsp; ({prop.local_class.name})")
+			add("a").attr("href", "{propname}.html").attr("title", "{title}").text("{prop.mproperty.name}&nbsp; ({propname})")
 			close("li")
 		end
 		close("ul")
