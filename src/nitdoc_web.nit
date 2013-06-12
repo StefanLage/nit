@@ -477,6 +477,7 @@ class NitdocModules
 		add("h1").text(modulename)
 		add("div").add_class("subtitle").text("module {modulename}")
 		add_module_comment
+		add_classes
 		close("div")
 	end
 
@@ -487,10 +488,33 @@ class NitdocModules
 		for i in amodule.n_moduledecl.n_doc.n_comment do doc += i.text_nitdoc
 		open("div").attr("id", "description")
 		add("pre").add_class("text_label").text(doc)
-		add("textarea").add_class("edit").attr("rows", "1").attr("cols", "76").attr("id", "fileContent")
+		add("textarea").add_class("edit").attr("rows", "1").attr("cols", "76").attr("id", "fileContent").text(" ")
 		add("a").attr("id", "cancelBtn").text("Cancel")
 		add("a").attr("id", "commitBtn").text("Commit")
 		add("pre").add_class("text_label").attr("id", "preSave").attr("type", "2")
+		close("div")
+	end
+
+	fun add_classes do
+		open("div").add_class("module")
+		open("article").add_class("classes filterable")
+		add("h2").text("Classes")
+		open("ul")
+		for cl in amodule.mmodule.mclassdefs
+		do
+			var name = cl.mclass.name
+			if cl.is_intro then
+				open("li").add_class("intro")
+				add("span").attr("title", "introduced in this module").text("I ")
+			else
+				open("li").add_class("redef")
+				add("span").attr("title", "refined in this module").text("R ")
+			end
+			add("a").attr("href", "{name}.html").text(name)
+			close("li")
+		end
+		close("ul")
+		close("article")
 		close("div")
 	end
 
