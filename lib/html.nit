@@ -151,6 +151,7 @@ class HTMLTag
 	# Set text of element
 	# var p = new HTMLTag("p")
 	# p.text("Hello World!")
+	# Text is escaped see: standard::String::html_escape
 	fun text(txt: String): HTMLTag do
 		content = txt
 		return self
@@ -160,8 +161,9 @@ class HTMLTag
 	# Append text to element
 	# var p = new HTMLTag("p")
 	# p.append("Hello").append("<br/>").append("World!")
+	# Text is escaped see: standard::String::html_escape
 	fun append(txt: String): HTMLTag do
-		text("{content}txt")
+		text("{content}{txt}")
 		return self
 	end
 
@@ -200,10 +202,11 @@ class HTMLTag
 	end
 
 	private fun render_content: String do
+		var str = content.html_escape
 		for child in children do
-			content = "{content}{child.html}"
+			str += child.html
 		end
-		return content
+		return str
 	end
 end
 

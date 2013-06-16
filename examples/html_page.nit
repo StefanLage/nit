@@ -48,7 +48,9 @@ class NitHomepage
 					add("p").text("Nit's goal is to be usable by real programmers for real projects")
 
 					open("ul")
-						add("li").text("<a href='http://en.wikipedia.org/wiki/KISS_principle'>KISS</a> principle")
+						open("li")
+						add("a").attr("href", "http://en.wikipedia.org/wiki/KISS_principle").text("KISS principle")
+						close("li")
 						add("li").text("Script-like language without verbosity nor cryptic statements")
 						add("li").text("Painless static types: static typing should help programmers")
 						add("li").text("Efficient development, efficient execution, efficient evolution.")
@@ -66,10 +68,18 @@ class NitHomepage
 					add("p").text("Nit's guideline is to follow the most powerful OO principles")
 
 					open("ul")
-						add("li").text("<a href='./everything_is_an_object/'>Everything is an object</a>")
-						add("li").text("<a href='./multiple_inheritance/'>Multiple inheritance</a>")
-						add("li").text("<a href='./refinement/'>Open classes</a>")
-						add("li").text("<a href='./virtual_types/'>Virtual types</a>")
+						open("li")
+						add("a").attr("href", "./everything_is_an_object/").text("Everything is an object")
+						close("li")
+						open("li")
+						add("a").attr("href", "./multiple_inheritance/").text("Multiple inheritance")
+						close("li")
+						open("li")
+						add("a").attr("href", "./refinement/").text("Open classes")
+						close("li")
+						open("li")
+						add("a").attr("href", "./virtual_types/").text("Virtual types")
+						close("li")
 					close("ul")
 
 
@@ -78,7 +88,7 @@ class NitHomepage
 
 					add_html("<pre><code>$ git clone http://nitlanguage.org/nit.git</code></pre>")
 					add("p").text("Build the compiler (may be long):")
-					add_html("<pre><code>$ cd nit")
+					add_html("<pre><code>$ cd nit\n")
 					add_html("$ make</code></pre>")
 					add("p").text("Compile a program:")
 					add_html("<pre><code>$ bin/nitc examples/hello_world.nit</code></pre>")
@@ -86,31 +96,10 @@ class NitHomepage
 					add_html("<pre><code>$ ./hello_world</code></pre>")
 				close("section")
 			close("div")
-
-			open("footer").attr("id", "footer").attr("class", "pagefooter")
-				open("nav").attr("id", "pageinfo")
-					open("div").attr("class", "pagedate")
-						add_html("Last edited <time datetime='2013-04-05T16:18:56Z'>Fri Apr  5 12:18:56 2013</time>")
-						add_html("<!-- Created <time datetime='2012-04-05T01:23:40Z' pubdate='pubdate'>Wed Apr  4 21:23:40 2012</time> -->")
-					close("div")
-
-					open("div").add_class("footnav")
-						add("a").attr("href", "map/").text("Sitemap")
-						add("a").attr("href", "contribution_policy/").text("Policy")
-						add("a").attr("href", "ikiwiki/").text("Ikiwiki")
-					close("div")
-					open("nav").add_class("actions footnav")
-						open("ul")
-							add("li").text("<a href='/ikiwiki.cgi?page=index&amp;do=edit' rel='nofollow'>Edit</a>")
-							add("li").text("<a href='./recentchanges/'>RecentChanges</a>")
-							add("li").text("<a href='/ikiwiki.cgi?do=prefs'>Preferences</a>")
-						close("ul")
-					close("nav")
-				close("nav")
-			close("footer")
 		close("article")
 	end
 end
 
 var page = new NitHomepage
+print page.render
 page.save("nit.html")
