@@ -18,6 +18,7 @@ module ni_web
 
 import model_utils
 import html
+import abstract_compiler
 
 class Nitdoc
 	private var toolcontext: ToolContext
@@ -108,7 +109,7 @@ class Nitdoc
 	end
 
 	fun fullindex do
-		var fullindex = new NitdocFullindex.with(model.mmodules, model.mclasses, modelbuilder.mpropdef2npropdef)
+		var fullindex = new NitdocFullindex.with(model.mmodules)
 		fullindex.save("{destinationdir.to_s}/full-index.html")
 	end
 	
@@ -613,16 +614,90 @@ class NitdocMClasses
 	redef fun body do
 		super
 		open("div").add_class("page")
-		#add_content
+		add_content
 		close("div")
 		add("footer").text("Nit standard library. Version jenkins-component=stdlib-19.")
 	end
 
 	# Insert all tags in content part
 	fun add_content do
+		open("div").add_class("menu")
+		properties_column
+		inheritance_column
+		close("div")	
 		open("div").add_class("content")
+		close("div")
 	end
 	
+	fun properties_column do
+		open("nav").add_class("properties filterable")
+		add("h3").text("Properties")
+		
+		if mclass.virtual_types.length > 0 then
+			add("h4").text("Virtual Types")
+			open("ul")
+			for prop in mclass.virtual_types do
+				add_html("<li class=\"redef\"><span title=\"Redefined\">R</span><a href=\"{prop.link_anchor}\">{prop.name}</a></li>")
+			end
+			close("ul")
+		end
+		if mclass.constructors.length > 0 then
+			add("h4").text("Constructors")
+			open("ul")
+			for prop in mclass.constructors do
+				add_html("<li class=\"intro\"><span title=\"Introduced\">I</span><a href=\"{prop.link_anchor}\">{prop.name}</a></li>")
+			end
+			close("ul")
+		end
+		add("h4").text("Methods")
+		open("ul")
+		if mclass.intro_methods.length > 0 then
+			for prop in mclass.intro_methods do
+				if prop.visibility is public_visibility or prop.visibility is protected_visibility then add_html("<li class=\"intro\"><span title=\"Introduced\">I</span><a href=\"{prop.link_anchor}\">{prop.name}</a></li>")
+			end
+		end
+		if mclass.inherited_methods.length > 0 then
+			for prop in mclass.inherited_methods do
+				if prop.visibility is public_visibility or prop.visibility is protected_visibility then add_html("<li class=\"inherit\"><span title=\"Inherited\">H</span><a href=\"{prop.link_anchor}\">{prop.name}</a></li>")
+			end
+		end
+		if mclass.redef_methods.length > 0 then
+			for prop in mclass.redef_methods do
+				if prop.visibility is public_visibility or prop.visibility is protected_visibility then add_html("<li class=\"redef\"><span title=\"Refined\">R</span><a href=\"{prop.link_anchor}\">{prop.name}</a></li>")
+			end
+		end
+		close("ul")
+		close("nav")
+	end
+
+	fun inheritance_column do
+		open("nav")
+		add("h3").text("Inheritance")
+		if mclass.parents.length > 0 then
+			add("h4").text("Superclasses")
+			open("ul")
+			for sup in mclass.parents do add_html("<li><a href=\"{sup.name}.html\">{sup.name}</a></li>")
+			close("ul")
+		end
+
+		if mclass.descendants.length is 0 then
+			add("h4").text("No Known Subclasses")
+		else if mclass.descendants.length <= 100 then
+			add("h4").text("Subclasses")
+			open("ul")
+			for sub in mclass.descendants do add_html("<li><a href=\"{sub.name}\">{sub.name}</a></li>")
+			close("ul")
+		else if mclass.children.length <= 100 then
+			add("h4").text("Direct Subclasses Only")
+			open("ul")
+			for sub in mclass.children do add_html("<li><a href=\"{sub.name}\">{sub.name}</a></li>")
+			close("ul")
+		else
+			add("h4").text("Too much Subclasses to list")
+		end
+		close("nav")
+	end
+
 end
 
 redef class HTMLPage
@@ -697,6 +772,19 @@ redef class MProperty
 	fun local_class: MClass do
 		var classdef = self.intro_mclassdef
 		return classdef.mclass
+	end
+
+	fun class_text: String do
+		var str = full_name.split("::")
+		return str[2]
+	end
+
+	fun link_anchor: String do
+		return "{class_text}.html#{anchor}"
+	end
+
+	fun anchor: String do
+		return "PROP_{c_name}"
 	end
 end
 
