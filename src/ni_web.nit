@@ -531,11 +531,13 @@ class NitdocMClasses
 	
 	var mclass: MClass
 	var aclassdef: AClassdef
+	var stdclassdef: nullable AStdClassdef
 	var public_owner: nullable MModule
 
 	init with(mclass: MClass, aclassdef: AClassdef) do
 		self.mclass = mclass
 		self.aclassdef = aclassdef
+		if aclassdef isa AStdClassdef then self.stdclassdef = aclassdef
 		self.public_owner = mclass.intro_mmodule.public_owner
 		opt_nodot = false
 		destinationdir = ""
@@ -715,24 +717,23 @@ class NitdocMClasses
 
 		# We add the class description
 		open("section").add_class("description")
-		add_html("<pre class=\"text_label\" title=\"122\" name=\"\" tag=\"{mclass.mclassdefs.first.location.to_s}\" type=\"2\">Toto </pre><textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
+		if not stdclassdef is null and not stdclassdef.comment.is_empty then add_html("<pre class=\"text_label\" title=\"122\" name=\"\" tag=\"{mclass.mclassdefs.first.location.to_s}\" type=\"2\">{stdclassdef.comment} </pre><textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
 		close("section")
+		
+		if mclass.name == "String" then print stdclassdef.comment
+
 
 		open("section").add_class("concerns")
 		add("h2").add_class("section-header").text("Concerns")
 		open("ul")
-		for mmodule in mclass.mmodules do
+		for owner, childs in mclass.concerns do
 			open("li")
-			add_html("<a href=\"#MOD_{mmodule.name}\">{mmodule.name}</a>")
-			open("ul")
-			for nmodule in mmodule.in_nesting.direct_smallers do
-				if nmodule is mmodule then continue
-				if not lmmodule.has(nmodule) then
-					lmmodule.add(nmodule)
-					add_html("<li><a href=\"#MOD{nmodule.name}\">{nmodule.name}</a></li>")
-				end
+			add_html("<a href=\"#MOD_{owner.name}\">{owner.name}</a>")
+			if not childs is null then
+				open("ul")
+				for child in childs.as(not null) do add_html("<li><a href=\"#MOD_{child.name}\">{child.name}</a></li>")
+				close("ul")
 			end
-			close("ul")
 			close("li")
 		end
 		close("ul")
@@ -826,6 +827,25 @@ redef class MClass
 		for mclassdef in mclassdefs do mdls.add(mclassdef.mmodule)
 		return mdls
 	end
+	
+	# Get the list of MModule concern in 'self'
+	fun concerns: HashMap[MModule, nullable List[MModule]] do
+		var hm = new HashMap[MModule, nullable List[MModule]]
+		for mmodule in mmodules do
+			var owner = mmodule.public_owner
+			if owner is null then
+				hm[mmodule] = null
+			else
+				if hm.has_key(owner.as(not null)) then
+					hm[owner.as(not null)].add(mmodule)
+				else
+					hm[owner.as(not null)] = new List[MModule]
+					hm[owner.as(not null)].add(mmodule)
+				end
+			end
+		end
+		return hm
+	end
 end
 
 redef class MProperty
@@ -867,6 +887,31 @@ end
 
 redef class AMethPropdef
 	redef fun short_comment do
+		var ret = ""
+		if n_doc != null then
+			var txt = n_doc.n_comment.first.text
+			txt = txt.replace("# ", "")
+			txt = txt.replace("\n", "")
+			ret += txt
+		end
+		return ret
+	end
+end
+
+redef class AStdClassdef
+	private fun comment: String do
+		var ret = ""
+		if n_doc != null then
+			for t in n_doc.n_comment do
+				var txt = t.text.replace("# ", "")
+				txt = txt.replace("#", "")
+				ret += "{txt}"
+			end
+		end
+		return ret
+	end
+
+	private fun short_comment: String do
 		var ret = ""
 		if n_doc != null then
 			var txt = n_doc.n_comment.first.text
