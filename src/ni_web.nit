@@ -626,6 +626,7 @@ class NitdocMClasses
 		inheritance_column
 		close("div")	
 		open("div").add_class("content")
+		content
 		close("div")
 	end
 	
@@ -698,6 +699,47 @@ class NitdocMClasses
 		close("nav")
 	end
 
+	fun content do
+		var subtitle = ""
+		var lmmodule = new List[MModule]
+		# Insert the subtitle part
+		add("h1").text(mclass.name)
+		open("div").add_class("subtitle")
+		if mclass.visibility is none_visibility then subtitle += "private "
+		subtitle += "{mclass.kind} <a href=\"{mclass.public_owner.name}.html\">{mclass.public_owner.name}</a>::{mclass.name}"
+		add_html(subtitle)
+		close("div")
+
+		# We add the class description
+		add_html("<div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
+
+		# We add the class description
+		open("section").add_class("description")
+		add_html("<pre class=\"text_label\" title=\"122\" name=\"\" tag=\"{mclass.mclassdefs.first.location.to_s}\" type=\"2\">Toto </pre><textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
+		close("section")
+
+		open("section").add_class("concerns")
+		add("h2").add_class("section-header").text("Concerns")
+		open("ul")
+		for mmodule in mclass.mmodules do
+			open("li")
+			add_html("<a href=\"#MOD_{mmodule.name}\">{mmodule.name}</a>")
+			open("ul")
+			for nmodule in mmodule.in_nesting.direct_smallers do
+				if nmodule is mmodule then continue
+				if not lmmodule.has(nmodule) then
+					lmmodule.add(nmodule)
+					add_html("<li><a href=\"#MOD{nmodule.name}\">{nmodule.name}</a></li>")
+				end
+			end
+			close("ul")
+			close("li")
+		end
+		close("ul")
+		close("section")
+
+	end
+
 end
 
 redef class HTMLPage
@@ -765,6 +807,24 @@ redef class MModule
 			end
 		end
 		return methods
+	end
+end
+
+redef class MClass
+
+	fun public_owner: MModule do
+		var owner = intro_mmodule
+		if owner.public_owner is null then
+			return owner
+		else
+			return owner.public_owner.as(not null)
+		end
+	end
+
+	fun mmodules: Set[MModule] do
+		var mdls = new HashSet[MModule]
+		for mclassdef in mclassdefs do mdls.add(mclassdef.mmodule)
+		return mdls
 	end
 end
 
