@@ -123,6 +123,7 @@ class Nitdoc
 	fun classes do
 		for amodule in modelbuilder.nmodules do
 			for mclass, aclassdef in amodule.mclass2nclassdef do
+				mclass.set_amodule(modelbuilder.mmodule2nmodule)
 				var classpage = new NitdocMClasses.with(mclass, aclassdef)
 				classpage.save("{destinationdir.to_s}/{mclass.name}.html")
 			end
@@ -720,18 +721,15 @@ class NitdocMClasses
 		if not stdclassdef is null and not stdclassdef.comment.is_empty then add_html("<pre class=\"text_label\" title=\"122\" name=\"\" tag=\"{mclass.mclassdefs.first.location.to_s}\" type=\"2\">{stdclassdef.comment} </pre><textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
 		close("section")
 		
-		if mclass.name == "String" then print stdclassdef.comment
-
-
 		open("section").add_class("concerns")
 		add("h2").add_class("section-header").text("Concerns")
 		open("ul")
 		for owner, childs in mclass.concerns do
 			open("li")
-			add_html("<a href=\"#MOD_{owner.name}\">{owner.name}</a>")
+			add_html("<a href=\"#MOD_{owner.name}\">{owner.name}</a>: {owner.amodule.short_comment}")
 			if not childs is null then
 				open("ul")
-				for child in childs.as(not null) do add_html("<li><a href=\"#MOD_{child.name}\">{child.name}</a></li>")
+				for child in childs.as(not null) do add_html("<li><a href=\"#MOD_{child.name}\">{child.name}</a>: {child.amodule.short_comment} </li>")
 				close("ul")
 			end
 			close("li")
@@ -784,10 +782,23 @@ redef class AModule
 		end
 		return ret
 	end
+
+	private fun short_comment: String do
+		var ret = ""
+		if n_moduledecl != null and n_moduledecl.n_doc != null then
+			var txt = n_moduledecl.n_doc.n_comment.first.text
+			txt = txt.replace("# ", "")
+			txt = txt.replace("\n", "")
+			ret += txt
+		end
+		return ret
+	end
 end
 
 redef class MModule
 	
+	var amodule: nullable AModule
+
 	# Get the list of all methods in a module
 	fun imported_methods: Set[MMethod] do
 		var methods = new HashSet[MMethod]
@@ -845,6 +856,14 @@ redef class MClass
 			end
 		end
 		return hm
+	end
+
+	# Associate Amodule to all MModule concern by 'self'
+	fun set_amodule(amodules: HashMap[MModule, AModule]) do
+		for owner, childs in concerns do
+			if childs != null then for child in childs.as(not null) do child.amodule = amodules[child]
+			owner.amodule = amodules[owner]
+		end
 	end
 end
 
