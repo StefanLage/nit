@@ -212,7 +212,7 @@ class NitdocOverview
 		open("article").add_class("overview")
 		add("p").text("Documentation for the standard library of Nit")
 		add("p").text("Version jenkins-component=stdlib-19")
-		add("p").text("Date: {sys.system("date").to_s}")
+		add("p").text("Date: TODAY")
 		close("article")
 		open("article").add_class("overview")
 		add("h2").text("Modules")
@@ -756,22 +756,43 @@ class NitdocMClasses
 		if mclass.constructors.length > 0 then
 			open("section").add_class("constructors")
 			add("h2").add_class("section-header").text("Constructors")
-			for prop in mclass.constructors do
-				open("article").add_class("init public").attr("id", "PROP_{prop.link_anchor}")
-				var sign = prop.name
-				if prop.apropdef != null then sign += prop.apropdef.signature
-				add_html("<h3 class=\"signature\">{sign}</h3>")
-				add_html("<div class=\"info\">init {prop.intro_mclassdef.namespace(mclass)}::{prop.name}</div><div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
-				description(prop)
-				close("article")
+			for prop in mclass.constructors do description("init", prop)
+			close("section")
+		end
+
+		# Insert methods introduced 'mclass' if there is almost one
+		if mclass.intro_methods.length > 0 then
+			open("section").add_class("methods")
+			add("h2").add_class("section-header").text("Methods")
+			for prop in mclass.intro_methods do description("fun", prop)
+	
+			# Insert inherited methods
+			if mclass.inherited_methods.length > 0 then
+				add("h3").text("Inherited Methods")
+				for i_mclass, methods in mclass.inherited do
+					open("p")
+					add_html("Defined in <a href=\"{i_mclass.name}.html\">{i_mclass.name}</a>: ")
+					for method in methods do
+						add_html("<a href=\"{method.link_anchor}\">{method.name}</a>")
+						if method != methods.last then add_html(", ")
+					end
+					close("p")
+				end
 			end
 			close("section")
 		end
 
+
 	end
 
 	# Insert description tags for 'prop'
-	fun description(prop: MMethod) do
+	fun description(art_class: String, prop: MMethod) do
+		open("article").add_class("{art_class} public").attr("id", "PROP_{prop.link_anchor}")
+		var sign = prop.name
+		if prop.apropdef != null then sign += prop.apropdef.signature
+		add_html("<h3 class=\"signature\">{sign}</h3>")
+		add_html("<div class=\"info\">fun {prop.intro_mclassdef.namespace(mclass)}::{prop.name}</div><div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
+		
 		open("div").add_class("description")
 		if prop.apropdef is null or prop.apropdef.comment == "" then
 			add_html("<a class=\"newComment\" title=\"32\" tag=\"\">New Comment</a>")
@@ -788,6 +809,8 @@ class NitdocMClasses
 		end
 		close("p")
 		close("div")
+
+		close("article")
 	end
 
 end
@@ -921,12 +944,26 @@ redef class MClass
 		for const in constructors do
 			if mprop2npropdef.has_key(const)then 
 				const.apropdef = mprop2npropdef[const].as(AMethPropdef)
-			else
-				#const.apropdef = new AMethPropdef
+			end
+		end
+		
+		for intro in intro_methods do
+			if mprop2npropdef.has_key(intro)then
+				if mprop2npropdef[intro] isa AMethPropdef then intro.apropdef = mprop2npropdef[intro].as(AMethPropdef)
 			end
 		end
 	end
 
+	# Associate MClass to all MMethod include in 'inherited_methods'
+	fun inherited: HashMap[MClass, Set[MMethod]] do
+		var hm = new HashMap[MClass, Set[MMethod]]
+		for method in inherited_methods do
+			var mclass = method.intro_mclassdef.mclass
+			if not hm.has_key(mclass) then hm[mclass] = new HashSet[MMethod]
+			hm[mclass].add(method)
+		end
+		return hm
+	end
 end
 
 redef class MProperty
@@ -1079,6 +1116,12 @@ redef class MClassDef
 		else
 			return "{mmodule.public_owner.name}::<a href=\"{mclass.name}.html\">{mclass.name}</a>"
 		end
+	end
+end
+
+redef class Set[E]
+	fun last: E do
+		return to_a[length-1]
 	end
 end
 
