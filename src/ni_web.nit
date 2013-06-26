@@ -756,42 +756,49 @@ class NitdocMClasses
 		if mclass.constructors.length > 0 then
 			open("section").add_class("constructors")
 			add("h2").add_class("section-header").text("Constructors")
-			for prop in mclass.constructors do description("init", prop)
+			for prop in mclass.constructors do description(prop)
 			close("section")
 		end
 
-		# Insert methods introduced 'mclass' if there is almost one
-		if mclass.intro_methods.length > 0 then
-			open("section").add_class("methods")
-			add("h2").add_class("section-header").text("Methods")
-			for prop in mclass.intro_methods do description("fun", prop)
-	
-			# Insert inherited methods
-			if mclass.inherited_methods.length > 0 then
-				add("h3").text("Inherited Methods")
-				for i_mclass, methods in mclass.inherited do
-					open("p")
-					add_html("Defined in <a href=\"{i_mclass.name}.html\">{i_mclass.name}</a>: ")
-					for method in methods do
-						add_html("<a href=\"{method.link_anchor}\">{method.name}</a>")
-						if method != methods.last then add_html(", ")
-					end
-					close("p")
+		open("section").add_class("methods")
+		add("h2").add_class("section-header").text("Methods")
+		for mmodule, mmethods in mclass.all_methods do
+			add_html("<a id=\"MOD_{mmodule.name}\"></a>")
+			if mmodule != mclass.intro_mmodule and mmodule != mclass.public_owner then
+				if mclass.has_mmodule(mmodule) then
+					add_html("<p class=\"concern-doc\">{mmodule.name}: {mmodule.amodule.short_comment}</p>")
+				else
+					add_html("<h3 class=\"concern-toplevel\">Methods refined in <a href=\"{mmodule.name}.html\">{mmodule.name}</a></h3><p class=\"concern-doc\">{mmodule.name}: {mmodule.amodule.short_comment}</p>")
 				end
 			end
-			close("section")
+			for prop in mmethods do description(prop)
 		end
+
+		# Insert inherited methods
+		if mclass.inherited_methods.length > 0 then
+			add("h3").text("Inherited Methods")
+			for i_mclass, methods in mclass.inherited do
+				open("p")
+				add_html("Defined in <a href=\"{i_mclass.name}.html\">{i_mclass.name}</a>: ")
+				for method in methods do
+					add_html("<a href=\"{method.link_anchor}\">{method.name}</a>")
+					if method != methods.last then add_html(", ")
+				end
+				close("p")
+			end
+		end
+		close("section")
 
 
 	end
 
 	# Insert description tags for 'prop'
-	fun description(art_class: String, prop: MMethod) do
-		open("article").add_class("{art_class} public").attr("id", "PROP_{prop.link_anchor}")
+	fun description(prop: MProperty) do
+		open("article").add_class("fun public {if prop.is_redef then "redef" else ""}").attr("id", "{prop.anchor}")
 		var sign = prop.name
 		if prop.apropdef != null then sign += prop.apropdef.signature
 		add_html("<h3 class=\"signature\">{sign}</h3>")
-		add_html("<div class=\"info\">fun {prop.intro_mclassdef.namespace(mclass)}::{prop.name}</div><div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
+		add_html("<div class=\"info\">{if prop.is_redef then "redef" else ""} fun {prop.intro_mclassdef.namespace(mclass)}::{prop.name}</div><div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
 		
 		open("div").add_class("description")
 		if prop.apropdef is null or prop.apropdef.comment == "" then
@@ -801,7 +808,8 @@ class NitdocMClasses
 		end
 		add_html("<textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
 		open("p")
-		if prop.local_class != mclass then add_html("inherited from {prop.local_class.intro_mmodule.name}")
+		if prop.local_class != mclass then add_html("inherited from {prop.local_class.intro_mmodule.name} ")
+		#TODO display show code if doc github
 		add_html("defined by the module <a href=\"{prop.intro_mclassdef.mmodule.name}.html\">{prop.intro_mclassdef.mmodule.name}</a> (<a href=\"\">show code</a>).")
 		
 		for parent in mclass.parents do
@@ -894,6 +902,18 @@ redef class MModule
 		end
 		return methods
 	end
+
+	fun has_mproperty(mclass: MClass, mproperty: MProperty): Bool do
+		if has_mclass(mclass) then
+			if properties(mclass).to_a.has(mproperty) and mproperty.intro_mclassdef.mmodule == self then
+				return true
+			else
+				return false
+			end
+		else
+			return false
+		end
+	end
 end
 
 redef class MClass
@@ -952,6 +972,12 @@ redef class MClass
 				if mprop2npropdef[intro] isa AMethPropdef then intro.apropdef = mprop2npropdef[intro].as(AMethPropdef)
 			end
 		end
+
+		for rd in redef_methods do
+			if mprop2npropdef.has_key(rd)then
+				if mprop2npropdef[rd] isa AMethPropdef then rd.apropdef = mprop2npropdef[rd].as(AMethPropdef)
+			end
+		end
 	end
 
 	# Associate MClass to all MMethod include in 'inherited_methods'
@@ -964,9 +990,66 @@ redef class MClass
 		end
 		return hm
 	end
+
+	# Associate all MMethods to each MModule concerns
+	fun all_methods: HashMap[MModule, Set[MMethod]] do
+		var hm = new HashMap[MModule, Set[MMethod]]
+		for mmodule, childs in concerns do
+			if not hm.has_key(mmodule) then hm[mmodule] = new HashSet[MMethod]
+			for prop in intro_methods do
+				if mmodule == prop.intro_mclassdef.mmodule then
+					prop.is_redef = false
+					hm[mmodule].add(prop)
+				end
+			end
+			for prop in redef_methods do
+				if mmodule == prop.intro_mclassdef.mmodule then
+					prop.is_redef = true
+					hm[mmodule].add(prop)
+				end
+			end
+
+			if childs != null then
+				for child in childs do
+					if not hm.has_key(child) then hm[child] = new HashSet[MMethod]
+					for prop in intro_methods do
+						if child == prop.intro_mclassdef.mmodule then
+							prop.is_redef = false
+							hm[child].add(prop)
+						end
+					end
+					for prop in redef_methods do
+						if child == prop.intro_mclassdef.mmodule then
+							prop.is_redef = true
+							hm[child].add(prop)
+						end
+					end
+				end
+			end
+		end
+		return hm
+	end
+
+	# Return true if MModule concern contain subMModule
+	fun has_mmodule(sub: MModule): Bool do
+		for mmodule, childs in concerns do
+			if childs is null then continue
+			if childs.has(sub) then return true
+		end
+		return false
+	end
 end
 
 redef class MProperty
+	
+	var is_redef: Bool
+
+	redef init(intro_mclassdef: MClassDef, name: String, visibility: MVisibility)
+	do
+		super
+		is_redef = false
+	end
+
 	fun local_class: MClass do
 		var classdef = self.intro_mclassdef
 		return classdef.mclass
@@ -988,12 +1071,6 @@ end
 
 redef class MMethod
 	var apropdef: nullable AMethPropdef
-
-	#redef fun full_name: String do
-		#if self.intro_mclassde.mclass is self. is null then
-			#return "{self.intro_mclassdef.mmodule.public_owner.name}::{self.intro_mclassdef.mclass.name}::{name}"
-		
-			#end
 end
 
 redef class APropdef
@@ -1076,11 +1153,6 @@ redef class ASignature
 		if not n_params.is_empty then
 			ret = "{ret}({n_params.join(", ")})"
 		end
-
-		#if not param_names.is_empty then
-			#ret = "{ret}({param_names.join(", ")})"
-			#end
-
 		if n_type != null and n_type.to_s != "" then ret += " {n_type.to_s}"
 		return ret
 	end
