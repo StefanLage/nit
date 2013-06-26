@@ -123,7 +123,8 @@ class Nitdoc
 	fun classes do
 		for amodule in modelbuilder.nmodules do
 			for mclass, aclassdef in amodule.mclass2nclassdef do
-				mclass.set_amodule(modelbuilder.mmodule2nmodule)
+				mclass.amodule(modelbuilder.mmodule2nmodule)
+				mclass.mmethod(aclassdef.mprop2npropdef)
 				var classpage = new NitdocMClasses.with(mclass, aclassdef)
 				classpage.save("{destinationdir.to_s}/{mclass.name}.html")
 			end
@@ -736,7 +737,57 @@ class NitdocMClasses
 		end
 		close("ul")
 		close("section")
+		
+		# Insert virtual types if there is almost one
+		if mclass.virtual_types.length > 0 then
+			open("section").add_class("types")
+			add("h2").text("Formal and Virtual Types")
+			for prop in mclass.virtual_types do
+				open("article")
+				open("h3").add_class("signature").text("{prop.name}: ")
+				add("a").attr("title", stdclassdef.comment).attr("href", "{mclass.name}.html").text(mclass.name)
+				close("h3")
+				close("article")
+			end
+			close("section")
+		end
 
+		# Insert constructors if there is almost one
+		if mclass.constructors.length > 0 then
+			open("section").add_class("constructors")
+			add("h2").add_class("section-header").text("Constructors")
+			for prop in mclass.constructors do
+				open("article").add_class("init public").attr("id", "PROP_{prop.link_anchor}")
+				var sign = prop.name
+				if prop.apropdef != null then sign += prop.apropdef.signature
+				add_html("<h3 class=\"signature\">{sign}</h3>")
+				add_html("<div class=\"info\">init {prop.intro_mclassdef.namespace(mclass)}::{prop.name}</div><div style=\"float: right;\"><a id=\"lblDiffCommit\"></a></div>")
+				description(prop)
+				close("article")
+			end
+			close("section")
+		end
+
+	end
+
+	# Insert description tags for 'prop'
+	fun description(prop: MMethod) do
+		open("div").add_class("description")
+		if prop.apropdef is null or prop.apropdef.comment == "" then
+			add_html("<a class=\"newComment\" title=\"32\" tag=\"\">New Comment</a>")
+		else
+			add_html("<pre class=\"text_label\" title=\"\" name=\"\" tag=\"\" type=\"1\">{prop.apropdef.comment}</pre>")
+		end
+		add_html("<textarea id=\"fileContent\" class=\"edit\" cols=\"76\" rows=\"1\" style=\"display: none;\"></textarea><a id=\"cancelBtn\" style=\"display: none;\">Cancel</a><a id=\"commitBtn\" style=\"display: none;\">Commit</a><pre id=\"preSave\" class=\"text_label\" type=\"2\"></pre>")
+		open("p")
+		if prop.local_class != mclass then add_html("inherited from {prop.local_class.intro_mmodule.name}")
+		add_html("defined by the module <a href=\"{prop.intro_mclassdef.mmodule.name}.html\">{prop.intro_mclassdef.mmodule.name}</a> (<a href=\"\">show code</a>).")
+		
+		for parent in mclass.parents do
+			if parent.constructors.has(prop) then add_html(" Previously defined by: <a href=\"{parent.intro_mmodule.name}.html\">{parent.intro_mmodule.name}</a> for <a href=\"{parent.name}.html\">{parent.name}</a>.")
+		end
+		close("p")
+		close("div")
 	end
 
 end
@@ -859,12 +910,23 @@ redef class MClass
 	end
 
 	# Associate Amodule to all MModule concern by 'self'
-	fun set_amodule(amodules: HashMap[MModule, AModule]) do
+	fun amodule(amodules: HashMap[MModule, AModule]) do
 		for owner, childs in concerns do
-			if childs != null then for child in childs.as(not null) do child.amodule = amodules[child]
+			if childs != null then for child in childs do child.amodule = amodules[child]
 			owner.amodule = amodules[owner]
 		end
 	end
+
+	fun mmethod(mprop2npropdef: Map[MProperty, APropdef]) do
+		for const in constructors do
+			if mprop2npropdef.has_key(const)then 
+				const.apropdef = mprop2npropdef[const].as(AMethPropdef)
+			else
+				#const.apropdef = new AMethPropdef
+			end
+		end
+	end
+
 end
 
 redef class MProperty
@@ -885,6 +947,16 @@ redef class MProperty
 	fun anchor: String do
 		return "PROP_{c_name}"
 	end
+end
+
+redef class MMethod
+	var apropdef: nullable AMethPropdef
+
+	#redef fun full_name: String do
+		#if self.intro_mclassde.mclass is self. is null then
+			#return "{self.intro_mclassdef.mmodule.public_owner.name}::{self.intro_mclassdef.mclass.name}::{name}"
+		
+			#end
 end
 
 redef class APropdef
@@ -915,6 +987,24 @@ redef class AMethPropdef
 		end
 		return ret
 	end
+
+	fun signature: String do
+		var sign = ""
+		if n_signature != null  then sign = " {n_signature.to_s}"
+		return sign
+	end
+	
+	private fun comment: String do
+		var ret = ""
+		if n_doc != null then
+			for t in n_doc.n_comment do
+				var txt = t.text.replace("# ", "")
+				txt = txt.replace("#", "")
+				ret += "{txt}"
+			end
+		end
+		return ret
+	end
 end
 
 redef class AStdClassdef
@@ -939,6 +1029,56 @@ redef class AStdClassdef
 			ret += txt
 		end
 		return ret
+	end
+end
+
+redef class ASignature
+	redef fun to_s do
+		#TODO closures
+		var ret = ""
+		if not n_params.is_empty then
+			ret = "{ret}({n_params.join(", ")})"
+		end
+
+		#if not param_names.is_empty then
+			#ret = "{ret}({param_names.join(", ")})"
+			#end
+
+		if n_type != null and n_type.to_s != "" then ret += " {n_type.to_s}"
+		return ret
+	end
+end
+
+redef class AParam
+	redef fun to_s do
+		var ret = "{n_id.text}"
+		if n_type != null then
+			ret = "{ret}: {n_type.to_s}"
+			if n_dotdotdot != null then ret = "{ret}..."
+		end
+		return ret
+	end
+end
+
+redef class AType
+	redef fun to_s do
+		var ret = "<a href=\"{n_id.text}.html\">{n_id.text}</a>"
+		if n_kwnullable != null then ret = "nullable {ret}"
+		if not n_types.is_empty then ret = "{ret}[{n_types.join(", ")}]"
+		return ret
+	end
+end
+
+redef class MClassDef
+	private fun namespace(mclass: MClass): String do
+		
+		if mmodule.public_owner is null then
+			return "{mmodule.full_name}::{mclass.name}"
+		else if mclass is self.mclass then
+			return "{mmodule.public_owner.name}::{mclass.name}"
+		else
+			return "{mmodule.public_owner.name}::<a href=\"{mclass.name}.html\">{mclass.name}</a>"
+		end
 	end
 end
 
