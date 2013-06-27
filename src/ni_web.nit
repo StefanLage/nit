@@ -40,14 +40,14 @@ class Nitdoc
 		# We need a model to collect stufs
 		self.toolcontext = toolcontext
 		self.arguments = toolcontext.option_context.rest
+		toolcontext.option_context.options.clear
 		toolcontext.option_context.add_option(opt_dir)
 		toolcontext.option_context.add_option(opt_source)
 		toolcontext.option_context.add_option(opt_sharedir)
 		toolcontext.option_context.add_option(opt_nodot)
-
 		process_options
 
-		if arguments.length > 2 then
+		if arguments.length < 1 then
 			toolcontext.option_context.usage
 			exit(1)
 		end
