@@ -229,7 +229,7 @@ class NitdocOverview
 	fun add_modules do
 		for amodule in amodules do
 			open("li")
-			add("a").attr("href", "{amodule.mmodule.name}.html").text("{amodule.mmodule.to_s}")
+			add("a").attr("href", "{amodule.mmodule.name}.html").text("{amodule.mmodule.to_s} ")
 			add_html(amodule.comment)
 			close("li")
 		end
@@ -742,13 +742,7 @@ class NitdocMClasses
 		if mclass.virtual_types.length > 0 then
 			open("section").add_class("types")
 			add("h2").text("Formal and Virtual Types")
-			for prop in mclass.virtual_types do
-				open("article")
-				open("h3").add_class("signature").text("{prop.name}: ")
-				add("a").attr("title", stdclassdef.comment).attr("href", "{mclass.name}.html").text(mclass.name)
-				close("h3")
-				close("article")
-			end
+			for prop in mclass.virtual_types do description(prop)
 			close("section")
 		end
 
@@ -813,7 +807,7 @@ class NitdocMClasses
 		add_html("defined by the module <a href=\"{prop.intro_mclassdef.mmodule.name}.html\">{prop.intro_mclassdef.mmodule.name}</a> (<a href=\"\">show code</a>).")
 		
 		for parent in mclass.parents do
-			if parent.constructors.has(prop) then add_html(" Previously defined by: <a href=\"{parent.intro_mmodule.name}.html\">{parent.intro_mmodule.name}</a> for <a href=\"{parent.name}.html\">{parent.name}</a>.")
+			if prop isa MMethod then if parent.constructors.has(prop) then add_html(" Previously defined by: <a href=\"{parent.intro_mmodule.name}.html\">{parent.intro_mmodule.name}</a> for <a href=\"{parent.name}.html\">{parent.name}</a>.")
 		end
 		close("p")
 		close("div")
@@ -1043,6 +1037,7 @@ end
 redef class MProperty
 	
 	var is_redef: Bool
+	var apropdef: nullable APropdef
 
 	redef init(intro_mclassdef: MClassDef, name: String, visibility: MVisibility)
 	do
@@ -1070,11 +1065,13 @@ redef class MProperty
 end
 
 redef class MMethod
-	var apropdef: nullable AMethPropdef
+	#var apropdef: nullable AMethPropdef
 end
 
 redef class APropdef
 	private fun short_comment: String is abstract
+	private fun signature: String is abstract
+	private fun comment: String is abstract
 end
 
 redef class AAttrPropdef
@@ -1102,13 +1099,13 @@ redef class AMethPropdef
 		return ret
 	end
 
-	fun signature: String do
+	redef fun signature: String do
 		var sign = ""
 		if n_signature != null  then sign = " {n_signature.to_s}"
 		return sign
 	end
 	
-	private fun comment: String do
+	redef private fun comment: String do
 		var ret = ""
 		if n_doc != null then
 			for t in n_doc.n_comment do
