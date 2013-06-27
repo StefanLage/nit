@@ -72,6 +72,7 @@ class Nitdoc
 			fullindex
 			modules
 			classes
+			quicksearch_list
 		end
 	end
 
@@ -129,6 +130,25 @@ class Nitdoc
 				classpage.save("{destinationdir.to_s}/{mclass.name}.html")
 			end
 		end
+	end
+
+	# Generate QuickSearch file
+	fun quicksearch_list do
+		var file = new OFStream.open("{destinationdir.to_s}/quicksearch-list.js")
+		var content = "var entries = \{ "
+		for prop in model.mproperties do
+			if not prop isa MMethod then continue
+			content += "\"{prop.name}\": ["
+			for propdef in prop.mpropdefs do
+				content += "\{txt: \"{propdef.mproperty.full_name}\", url:\"{propdef.mproperty.link_anchor}\" \}"
+				if not propdef is prop.mpropdefs.last then content += ", "
+			end
+			content += "]"
+			if not prop is model.mproperties.last then content += ", "
+		end
+		content += " \};"
+		file.write(content)
+		file.close
 	end
 
 end
@@ -1061,8 +1081,7 @@ redef class MProperty
 	end
 
 	fun class_text: String do
-		var str = full_name.split("::")
-		return str[2]
+		return local_class.name
 	end
 
 	fun link_anchor: String do
